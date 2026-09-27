@@ -170,6 +170,7 @@ async function generate() {
     state.pages = story.pages.slice(0, f.pages).map((p) => ({
       caption: p.caption || '',
       prompt: p.imagePrompt || '',
+      originalPrompt: p.imagePrompt || '',
       img: null,
       mime: null,
       status: f.geminiKey ? 'idle' : 'nokey',
@@ -362,7 +363,19 @@ async function drawPage(i, runId = state.runId) {
 function update(i, patch) {
   Object.assign(state.pages[i], patch);
   const old = document.querySelector(`[data-index="${i}"]`);
-  if (old) old.replaceWith(renderPage(i));
+  if (!old) return renderProgress();
+
+  // Keep the cursor in the prompt box if the page re-renders while someone is typing.
+  const active = document.activeElement;
+  const editing = active && active.classList.contains('prompt-input') && old.contains(active)
+    ? { start: active.selectionStart, end: active.selectionEnd } : null;
+  const fresh = renderPage(i);
+  old.replaceWith(fresh);
+  if (editing) {
+    const box = fresh.querySelector('.prompt-input');
+    box.focus();
+    box.setSelectionRange(editing.start, editing.end);
+  }
   renderProgress();
 }
 
@@ -405,17 +418,43 @@ function renderPage(i) {
       el('p', { class: 'caption', text: p.caption, style: 'margin:0' }),
       isEnd && el('div', { class: 'the-end', text: 'The End' })));
 
+  // Editable image prompt: Redraw uses whatever is in the box.
+  const promptId = `prompt-${i}`;
+  const promptBox = el('textarea', { id: promptId, class: 'prompt-input', rows: '3', spellcheck: 'true' });
+  promptBox.value = p.prompt;
+  const resetBtn = el('button', { type: 'button', class: 'btn-link', text: 'Reset prompt' });
+  resetBtn.hidden = p.prompt === p.originalPrompt;
+  promptBox.addEventListener('input', () => {
+    p.prompt = promptBox.value;
+    resetBtn.hidden = p.prompt === p.originalPrompt;
+  });
+  promptBox.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && p.status !== 'loading') {
+      e.preventDefault();
+      drawPage(i);
+    }
+  });
+  resetBtn.addEventListener('click', () => {
+    p.prompt = p.originalPrompt;
+    promptBox.value = p.prompt;
+    resetBtn.hidden = true;
+    promptBox.focus();
+  });
+
   const tools = el('div', { class: 'page-tools' },
-    el('button', {
-      type: 'button',
-      class: 'btn-small',
-      text: 'Redraw',
-      onclick: () => drawPage(i),
-      ...(p.status === 'loading' ? { disabled: '' } : {}),
-    }),
-    el('div', { class: 'prompt' },
-      p.note && el('div', { class: 'note', text: p.note }),
-      p.prompt));
+    p.note && el('div', { class: 'note', text: p.note }),
+    el('label', { class: 'prompt-label', for: promptId, text: `Image prompt for page ${i + 1} (edit it, then Redraw)` }),
+    promptBox,
+    el('div', { class: 'tool-row' },
+      el('button', {
+        type: 'button',
+        class: 'btn-small',
+        text: p.status === 'loading' ? 'Drawing...' : 'Redraw',
+        onclick: () => drawPage(i),
+        ...(p.status === 'loading' ? { disabled: '' } : {}),
+      }),
+      resetBtn,
+      el('span', { class: 'shortcut', text: 'Ctrl+Enter redraws' })));
 
   return el('article', { class: 'comic-page', 'data-index': String(i), 'aria-label': `Page ${i + 1}` }, panel, tools);
 }
