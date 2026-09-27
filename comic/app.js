@@ -7,7 +7,6 @@ const CLAUDE_MODEL = 'claude-sonnet-4-5';
 const GEMINI_MODEL = 'gemini-2.5-flash-image';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 const IMAGE_CONCURRENCY = 3;
-const IMAGE_ATTEMPTS = 3;
 
 const STYLE =
   "Children's comic book illustration, bold black ink outlines, bright flat primary colors, " +
@@ -249,15 +248,17 @@ async function drawAll(runId) {
   await Promise.all(Array.from({ length: IMAGE_CONCURRENCY }, worker));
 }
 
-// Gemini can answer 200 OK with no picture: a safety block (the reason is in
-// promptFeedback.blockReason or candidates[0].finishReason) or, now and then,
-// just an empty answer. Blocks are reported; empty answers and rate limits
-// are marked retryable.
-const SAFETY_REASONS = /SAFETY|PROHIBITED|BLOCKLIST|SPII|RECITATION/;
+// Gemini can answer 200 OK with no picture. Each failure gets a kind:
+//   transient - empty answer, rate limit, server error: try the same request again
+//   refused   - IMAGE_OTHER or a safety block: usually caused by an attached photo
+//               of real people (especially children), so drop references and retry
+//   fatal     - bad key, bad request: stop
+const REFUSED_REASONS = /SAFETY|PROHIBITED|BLOCKLIST|SPII|RECITATION|IMAGE_OTHER/;
+const TRIES_PER_VARIANT = 2;
 
-function imageError(message, retryable) {
+function imageError(message, kind) {
   const e = new Error(message);
-  e.retryable = retryable;
+  e.kind = kind;
   return e;
 }
 
@@ -272,7 +273,8 @@ async function requestImage(parts) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw imageError(data.error?.message || `Gemini API error ${res.status}`, res.status === 429 || res.status >= 500);
+    const kind = res.status === 429 || res.status >= 500 ? 'transient' : 'fatal';
+    throw imageError(data.error?.message || `Gemini API error ${res.status}`, kind);
   }
 
   const candidate = data.candidates?.[0];
@@ -285,51 +287,75 @@ async function requestImage(parts) {
   }
 
   const reason = data.promptFeedback?.blockReason || candidate?.finishReason || 'no reason given';
-  const detail = [data.promptFeedback?.blockReasonMessage, candidate?.finishMessage,
-    ...outParts.map((p) => p.text)].filter(Boolean).join(' ');
-  if (SAFETY_REASONS.test(reason)) {
-    const tip = state.photo ? ' Gemini often blocks edits of real photos, especially of children: try again without the family photo.' : ' Try Redraw, or edit the story idea.';
-    throw imageError(`Blocked by Gemini's safety filter (${reason}).${detail ? ' ' + detail : ''}${tip}`, false);
-  }
-  throw imageError(`No image returned (${reason}).${detail ? ' ' + detail : ''}`, true);
+  const detail = data.promptFeedback?.blockReasonMessage || candidate?.finishMessage || '';
+  const refused = REFUSED_REASONS.test(reason);
+  const label = refused ? "Gemini refused to draw this page" : 'No image returned';
+  throw imageError(`${label} (${reason}).${detail ? ' ' + detail : ''}`, refused ? 'refused' : 'transient');
 }
+
+// The request for one page, with or without the reference images.
+function buildParts(page, { photo, cover }) {
+  let text = `${STYLE}\nCharacters: ${state.characters}\n`;
+  if (photo) {
+    text += 'Use the attached family photo only as a loose reference for hair, skin tone and clothing, ' +
+      'redrawn as simple cartoon characters rather than a realistic likeness. ';
+  }
+  if (cover) text += 'Match the character designs in the attached cover illustration.';
+  text += `\nScene: ${page.prompt}\nLandscape 4:3 composition.`;
+
+  const parts = [{ text }];
+  if (photo) parts.push({ inline_data: { mime_type: state.photo.mime, data: state.photo.data } });
+  if (cover) {
+    const c = state.pages[0];
+    parts.push({ inline_data: { mime_type: c.mime, data: c.img.split(',')[1] } });
+  }
+  return parts;
+}
+
+// Fallback ladder: everything attached, then without the family photo, then text only.
+function variantsFor(i) {
+  const photo = !!state.photo;
+  const cover = i > 0 && !!state.pages[0].img;
+  const list = [{ photo, cover, note: '' }];
+  if (photo) list.push({ photo: false, cover, note: 'Drawn without the family photo (Gemini refused it).' });
+  if (cover) list.push({ photo: false, cover: false, note: 'Drawn from text only (Gemini refused the reference images).' });
+  return list;
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function drawPage(i, runId = state.runId) {
   const page = state.pages[i];
   if (!page) return;
   state.geminiKey = form.elements.geminiKey.value.trim();
   if (!state.geminiKey) { update(i, { status: 'nokey' }); return; }
-  update(i, { status: 'loading', err: '' });
+  update(i, { status: 'loading', err: '', note: '' });
 
-  const cover = state.pages[0];
-  const useCover = i > 0 && cover.img;
-  let text = `${STYLE}\nCharacters: ${state.characters}\n`;
-  if (state.photo) text += "Base the characters' faces on the attached family photo. ";
-  if (useCover) text += 'Match the character designs in the attached cover illustration.';
-  text += `\nScene: ${page.prompt}\nLandscape 4:3 composition.`;
-
-  const parts = [{ text }];
-  if (state.photo) parts.push({ inline_data: { mime_type: state.photo.mime, data: state.photo.data } });
-  if (useCover) parts.push({ inline_data: { mime_type: cover.mime, data: cover.img.split(',')[1] } });
-
+  const variants = variantsFor(i);
+  let lastError;
   try {
-    let lastError;
-    for (let attempt = 1; attempt <= IMAGE_ATTEMPTS; attempt++) {
-      try {
-        const { img, mime } = await requestImage(parts);
+    for (const [v, variant] of variants.entries()) {
+      const isLast = v === variants.length - 1;
+      for (let t = 1; t <= TRIES_PER_VARIANT; t++) {
         if (runId !== state.runId) return;
-        update(i, { status: 'done', img, mime });
-        return;
-      } catch (e) {
-        lastError = e;
-        if (!e.retryable || attempt === IMAGE_ATTEMPTS || runId !== state.runId) break;
-        await new Promise((r) => setTimeout(r, 1500 * attempt));
+        try {
+          const { img, mime } = await requestImage(buildParts(page, variant));
+          if (runId !== state.runId) return;
+          update(i, { status: 'done', img, mime, note: variant.note });
+          return;
+        } catch (e) {
+          lastError = e;
+          if (e.kind === 'fatal') throw e;
+          if (e.kind === 'refused' && !isLast) break; // next rung
+          if (t < TRIES_PER_VARIANT) await sleep(1500 * t);
+        }
       }
     }
     throw lastError;
   } catch (e) {
     if (runId !== state.runId) return;
-    update(i, { status: 'error', err: e.message });
+    const tip = e.kind === 'refused' ? ' Try Redraw, or reword this page\'s scene in the story idea.' : '';
+    update(i, { status: 'error', err: e.message + tip });
   }
 }
 
@@ -387,7 +413,9 @@ function renderPage(i) {
       onclick: () => drawPage(i),
       ...(p.status === 'loading' ? { disabled: '' } : {}),
     }),
-    el('div', { class: 'prompt', text: p.prompt }));
+    el('div', { class: 'prompt' },
+      p.note && el('div', { class: 'note', text: p.note }),
+      p.prompt));
 
   return el('article', { class: 'comic-page', 'data-index': String(i), 'aria-label': `Page ${i + 1}` }, panel, tools);
 }
