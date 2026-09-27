@@ -7,6 +7,7 @@ const CLAUDE_MODEL = 'claude-sonnet-4-5';
 const GEMINI_MODEL = 'gemini-2.5-flash-image';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 const IMAGE_CONCURRENCY = 3;
+const IMAGE_ATTEMPTS = 3;
 
 const STYLE =
   "Children's comic book illustration, bold black ink outlines, bright flat primary colors, " +
@@ -82,8 +83,17 @@ $('photo-input').addEventListener('change', (e) => {
     const preview = $('photo-preview');
     preview.src = url;
     preview.hidden = false;
+    $('photo-remove').hidden = false;
   };
   reader.readAsDataURL(file);
+});
+
+$('photo-remove').addEventListener('click', () => {
+  state.photo = null;
+  $('photo-input').value = '';
+  $('photo-preview').hidden = true;
+  $('photo-preview').removeAttribute('src');
+  $('photo-remove').hidden = true;
 });
 
 // ---------- Story (Claude) ----------
@@ -239,6 +249,51 @@ async function drawAll(runId) {
   await Promise.all(Array.from({ length: IMAGE_CONCURRENCY }, worker));
 }
 
+// Gemini can answer 200 OK with no picture: a safety block (the reason is in
+// promptFeedback.blockReason or candidates[0].finishReason) or, now and then,
+// just an empty answer. Blocks are reported; empty answers and rate limits
+// are marked retryable.
+const SAFETY_REASONS = /SAFETY|PROHIBITED|BLOCKLIST|SPII|RECITATION/;
+
+function imageError(message, retryable) {
+  const e = new Error(message);
+  e.retryable = retryable;
+  return e;
+}
+
+async function requestImage(parts) {
+  const res = await fetch(GEMINI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': state.geminiKey },
+    body: JSON.stringify({
+      contents: [{ parts }],
+      generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '4:3' } },
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw imageError(data.error?.message || `Gemini API error ${res.status}`, res.status === 429 || res.status >= 500);
+  }
+
+  const candidate = data.candidates?.[0];
+  const outParts = candidate?.content?.parts || [];
+  const imgPart = outParts.find((p) => p.inlineData || p.inline_data);
+  if (imgPart) {
+    const d = imgPart.inlineData || imgPart.inline_data;
+    const mime = d.mimeType || d.mime_type || 'image/png';
+    return { img: `data:${mime};base64,${d.data}`, mime };
+  }
+
+  const reason = data.promptFeedback?.blockReason || candidate?.finishReason || 'no reason given';
+  const detail = [data.promptFeedback?.blockReasonMessage, candidate?.finishMessage,
+    ...outParts.map((p) => p.text)].filter(Boolean).join(' ');
+  if (SAFETY_REASONS.test(reason)) {
+    const tip = state.photo ? ' Gemini often blocks edits of real photos, especially of children: try again without the family photo.' : ' Try Redraw, or edit the story idea.';
+    throw imageError(`Blocked by Gemini's safety filter (${reason}).${detail ? ' ' + detail : ''}${tip}`, false);
+  }
+  throw imageError(`No image returned (${reason}).${detail ? ' ' + detail : ''}`, true);
+}
+
 async function drawPage(i, runId = state.runId) {
   const page = state.pages[i];
   if (!page) return;
@@ -258,22 +313,20 @@ async function drawPage(i, runId = state.runId) {
   if (useCover) parts.push({ inline_data: { mime_type: cover.mime, data: cover.img.split(',')[1] } });
 
   try {
-    const res = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': state.geminiKey },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '4:3' } },
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error?.message || `Gemini API error ${res.status}`);
-    const imgPart = (data.candidates?.[0]?.content?.parts || []).find((p) => p.inlineData || p.inline_data);
-    if (!imgPart) throw new Error('No image returned');
-    const d = imgPart.inlineData || imgPart.inline_data;
-    const mime = d.mimeType || d.mime_type || 'image/png';
-    if (runId !== state.runId) return;
-    update(i, { status: 'done', img: `data:${mime};base64,${d.data}`, mime });
+    let lastError;
+    for (let attempt = 1; attempt <= IMAGE_ATTEMPTS; attempt++) {
+      try {
+        const { img, mime } = await requestImage(parts);
+        if (runId !== state.runId) return;
+        update(i, { status: 'done', img, mime });
+        return;
+      } catch (e) {
+        lastError = e;
+        if (!e.retryable || attempt === IMAGE_ATTEMPTS || runId !== state.runId) break;
+        await new Promise((r) => setTimeout(r, 1500 * attempt));
+      }
+    }
+    throw lastError;
   } catch (e) {
     if (runId !== state.runId) return;
     update(i, { status: 'error', err: e.message });
