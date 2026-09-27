@@ -130,6 +130,11 @@ a:hover { color: var(--blue); }
 
 .key-row input { flex: 1; min-width: 0; }
 .key-row .btn { flex-shrink: 0; }
+
+@media (max-width: 480px) {
+  .key-row { flex-wrap: wrap; }
+  .key-row input { flex-basis: 100%; }
+}
 .btn:disabled { opacity: .6; cursor: wait; }
 
 .key-status {

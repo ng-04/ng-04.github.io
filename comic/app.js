@@ -70,6 +70,17 @@ for (const [field, storageKey] of Object.entries(KEY_FIELDS)) {
   input.addEventListener('input', () => save(storageKey, input.value.trim()));
 }
 
+// Show/Hide toggles for the password fields, so a saved key can be read back.
+for (const button of form.querySelectorAll('[data-reveal]')) {
+  const input = form.elements[button.dataset.reveal];
+  button.addEventListener('click', () => {
+    const reveal = input.type === 'password';
+    input.type = reveal ? 'text' : 'password';
+    button.textContent = reveal ? 'Hide' : 'Show';
+    button.setAttribute('aria-pressed', String(reveal));
+  });
+}
+
 // ---------- Family photo ----------
 
 $('photo-input').addEventListener('change', (e) => {
