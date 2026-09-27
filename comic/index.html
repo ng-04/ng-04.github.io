@@ -71,14 +71,27 @@
       </div>
 
       <div class="keys">
-        <label class="field">Anthropic API key (writes the story)
-          <input name="anthropicKey" type="password" class="mono" autocomplete="off"
-                 placeholder="sk-ant-...">
+        <div class="field">
+          <label for="anthropicKey">Anthropic API key (writes the story)</label>
+          <div class="key-row">
+            <input id="anthropicKey" name="anthropicKey" type="password" class="mono" autocomplete="off"
+                   placeholder="sk-ant-...">
+            <button type="button" class="btn" data-test="anthropic">Test key</button>
+          </div>
+          <div class="key-status" id="anthropic-status" role="status"></div>
+        </div>
+        <label class="field">Anthropic workspace ID (only if your key isn't scoped to a workspace)
+          <input name="workspaceId" class="mono" autocomplete="off" placeholder="wrkspc_... (optional)">
         </label>
-        <label class="field">Gemini API key (draws the pictures)
-          <input name="geminiKey" type="password" class="mono" autocomplete="off"
-                 placeholder="Paste key from Google AI Studio">
-        </label>
+        <div class="field">
+          <label for="geminiKey">Gemini API key (draws the pictures)</label>
+          <div class="key-row">
+            <input id="geminiKey" name="geminiKey" type="password" class="mono" autocomplete="off"
+                   placeholder="Paste key from Google AI Studio">
+            <button type="button" class="btn" data-test="gemini">Test key</button>
+          </div>
+          <div class="key-status" id="gemini-status" role="status"></div>
+        </div>
         <p class="hint">Keys are saved only in this browser (localStorage) and sent straight to Anthropic and Google.
           Leave the Gemini key blank to get the story with image prompts instead of pictures.</p>
       </div>

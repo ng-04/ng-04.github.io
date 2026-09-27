@@ -13,7 +13,7 @@ const STYLE =
   'soft halftone dot shading, warm and joyful, rounded friendly characters. ' +
   'Absolutely no text, letters or speech bubbles in the image.';
 
-const KEY_FIELDS = { anthropicKey: 'comicAnthropicKey', geminiKey: 'comicGeminiKey' };
+const KEY_FIELDS = { anthropicKey: 'comicAnthropicKey', workspaceId: 'comicWorkspaceId', geminiKey: 'comicGeminiKey' };
 
 // ---------- State ----------
 
@@ -108,23 +108,28 @@ Return ONLY valid JSON, no markdown:
 {"title":"cover title","characters":"one consistent visual description of every character (age, hair, clothes incl. hero costume)","pages":[{"caption":"...","imagePrompt":"..."}]}`;
 }
 
-async function writeStory(f) {
+// Sends one Messages API request. Keys that aren't scoped to a workspace
+// need the anthropic-workspace-id header, so it's added when one is given.
+async function callClaude(f, content, maxTokens) {
+  const headers = {
+    'x-api-key': f.anthropicKey,
+    'anthropic-version': '2023-06-01',
+    'content-type': 'application/json',
+    'anthropic-dangerous-direct-browser-access': 'true',
+  };
+  if (f.workspaceId) headers['anthropic-workspace-id'] = f.workspaceId;
   const res = await fetch(CLAUDE_URL, {
     method: 'POST',
-    headers: {
-      'x-api-key': f.anthropicKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: CLAUDE_MODEL,
-      max_tokens: 4000,
-      messages: [{ role: 'user', content: storyPrompt(f) }],
-    }),
+    headers,
+    body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: maxTokens, messages: [{ role: 'user', content }] }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error?.message || `Claude API error ${res.status}`);
+  return data;
+}
+
+async function writeStory(f) {
+  const data = await callClaude(f, storyPrompt(f), 4000);
 
   const raw = (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
   const start = raw.indexOf('{');
@@ -168,6 +173,57 @@ async function generate() {
     if (runId !== state.runId) return;
     show('form');
     showError(`Story generation failed. Try again. (${e.message})`);
+  }
+}
+
+// ---------- Key tests ----------
+
+// Anthropic: a 1-token message (costs a fraction of a cent) proves the key,
+// workspace, model access and billing all work.
+async function testAnthropic(f) {
+  if (!f.anthropicKey) throw new Error('Paste a key first.');
+  await callClaude(f, 'Hi', 1);
+  return `Works with ${CLAUDE_MODEL}.`;
+}
+
+// Gemini: looking up the image model is free and proves the key can reach it.
+async function testGemini(f) {
+  if (!f.geminiKey) throw new Error('Paste a key first.');
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}`, {
+    headers: { 'x-goog-api-key': f.geminiKey },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error?.message || `Gemini API error ${res.status}`);
+  return `Works with ${GEMINI_MODEL}.`;
+}
+
+const KEY_TESTS = {
+  anthropic: { run: testAnthropic, status: 'anthropic-status', inputs: ['anthropicKey', 'workspaceId'] },
+  gemini: { run: testGemini, status: 'gemini-status', inputs: ['geminiKey'] },
+};
+
+function setKeyStatus(id, kind, text) {
+  const box = $(id);
+  box.className = `key-status ${kind}`;
+  box.textContent = text;
+}
+
+for (const [name, test] of Object.entries(KEY_TESTS)) {
+  const button = form.querySelector(`[data-test="${name}"]`);
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    setKeyStatus(test.status, 'busy', 'Testing...');
+    try {
+      setKeyStatus(test.status, 'ok', `✓ ${await test.run(readForm())}`);
+    } catch (e) {
+      setKeyStatus(test.status, 'bad', `✗ ${e.message}`);
+    } finally {
+      button.disabled = false;
+    }
+  });
+  // An old result no longer applies once the key changes.
+  for (const field of test.inputs) {
+    form.elements[field].addEventListener('input', () => setKeyStatus(test.status, '', ''));
   }
 }
 
