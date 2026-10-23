@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sunderkand Path</title>
+<meta name="description" content="Live Sunderkand path: Hanuman Chalisa, Sunderkand and Aarti, with the current verse highlighted on every phone.">
+<meta name="theme-color" content="#fbf8f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17131a" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Mukta:wght@400;500;700&display=swap">
+<style>
+/* Layout: one reading column of verses; sticky position bar on top; leader remote fixed at the bottom. */
+:root{
+  --bg:#fbf8f4; --surface:#ffffff; --fg:#2a1f1a; --muted:#7a6a60; --rule:#ebe2d8;
+  --sindoor:#c8410f; --sindoor-ink:#a8340a; --glow:#fde9d9; --glow-edge:#f3b48a; --past:.62;
+  --f-hi:"Tiro Devanagari Hindi","Noto Serif Devanagari","Mangal",serif;
+  --f-en:"Literata","Georgia",serif;
+  --f-ui:"Mukta","Noto Sans Devanagari",system-ui,sans-serif;
+  --scale:1;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#17131a; --surface:#201a23; --fg:#f1e7de; --muted:#a8988d; --rule:#342b37;
+  --sindoor:#ff8a4c; --sindoor-ink:#ffa070; --glow:#3a2219; --glow-edge:#8a4322; --past:.55; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#17131a; --surface:#201a23; --fg:#f1e7de; --muted:#a8988d; --rule:#342b37;
+  --sindoor:#ff8a4c; --sindoor-ink:#ffa070; --glow:#3a2219; --glow-edge:#8a4322; --past:.55; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-padding-top:120px;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-ui);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--sindoor);outline-offset:2px}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);
+  margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px))) calc(-1 * max(16px,env(safe-area-inset-right,0px)));
+  padding:10px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));
+  border-bottom:1px solid var(--rule)}
+.top-row{display:flex;align-items:center;gap:10px;max-width:720px;margin:0 auto}
+.brand{font-family:var(--f-hi);font-size:1.25rem;color:var(--sindoor-ink);line-height:1.1;flex:1;min-width:0}
+.brand small{display:block;font-family:var(--f-ui);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.live{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.live.on .dot{background:#2f9e5b;box-shadow:0 0 0 3px color-mix(in srgb,#2f9e5b 25%,transparent)}
+.iconbtn{border:1px solid var(--rule);background:var(--surface);border-radius:10px;height:36px;min-width:36px;padding:0 10px;cursor:pointer;font-size:.85rem}
+.chips{display:flex;gap:6px;max-width:720px;margin:8px auto 0;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--rule);background:transparent;border-radius:999px;padding:3px 12px;font-size:.82rem;cursor:pointer;color:var(--muted)}
+.chip.here{border-color:var(--sindoor);color:var(--sindoor-ink)}
+
+.panel{max-width:720px;margin:10px auto 0;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 14px;display:grid;gap:10px;
+  max-height:calc(100dvh - 140px);overflow-y:auto}
+.prow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.seg{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tog{border:1px solid var(--rule);background:var(--bg);border-radius:8px;padding:4px 12px;cursor:pointer;font-size:.88rem}
+.tog[aria-pressed="true"]{background:var(--sindoor);border-color:var(--sindoor);color:#fff}
+.tog.primary{background:var(--sindoor);border-color:var(--sindoor);color:#fff}
+.tog:disabled{opacity:.5;cursor:default}
+.note{font-size:.82rem;color:var(--muted);margin:0}
+.err{color:var(--sindoor-ink)}
+.pin{width:9.5em;border:1px solid var(--rule);background:var(--bg);border-radius:8px;padding:4px 10px;font-size:1rem;letter-spacing:.2em}
+
+main{max-width:720px;margin:0 auto;padding-block:8px 140px}
+.sec{text-align:center;padding:36px 0 14px}
+.sec .om{font-family:var(--f-hi);color:var(--sindoor);font-size:1.6rem;line-height:1}
+.sec h2{font-family:var(--f-hi);font-weight:400;font-size:calc(1.7rem*var(--scale));margin:.2em 0 0;text-wrap:balance}
+.sec p{margin:.2em 0 0;color:var(--muted);font-size:.85rem;letter-spacing:.04em}
+.loading{text-align:center;color:var(--muted);padding:60px 0}
+
+.v{position:relative;display:grid;grid-template-columns:3.4rem 1fr;gap:4px 10px;padding:12px 10px 12px 6px;border-radius:12px;
+  border:1px solid transparent;cursor:default;transition:background .25s,border-color .25s,opacity .25s;scroll-margin-top:130px}
+.v + .v{border-top-color:var(--rule);border-top-left-radius:0;border-top-right-radius:0}
+.lab{font-size:.74rem;color:var(--muted);text-align:right;padding-top:.45em;font-variant-numeric:tabular-nums;line-height:1.2}
+.lab b{display:block;font-weight:500;color:var(--fg);opacity:.7}
+.body{min-width:0}
+.hi{font-family:var(--f-hi);font-size:calc(1.28rem*var(--scale));line-height:1.65}
+.en{font-family:var(--f-en);font-size:calc(.98rem*var(--scale));line-height:1.55;color:var(--fg);opacity:.86;margin-top:2px}
+.story{display:none;margin-top:8px;padding:6px 10px;border-radius:8px;background:color-mix(in srgb,var(--sindoor) 9%,transparent);
+  font-size:calc(.9rem*var(--scale));line-height:1.45;color:var(--fg)}
+.story::before{content:"Story";display:block;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--sindoor-ink);font-weight:700}
+.v.ep .story,.v.cur .story{display:block}
+.v.cur .story{background:color-mix(in srgb,var(--sindoor) 14%,transparent)}
+.mean{font-size:calc(.9rem*var(--scale));color:var(--muted);margin-top:6px;line-height:1.5}
+.v.k-doha .hi,.v.k-shlok .hi,.v.k-chhand .hi{color:var(--sindoor-ink)}
+.v.k-doha .lab b,.v.k-shlok .lab b,.v.k-chhand .lab b{color:var(--sindoor-ink);opacity:1}
+.v.k-colophon .hi{font-size:calc(1.05rem*var(--scale));text-align:center}
+.v.past{opacity:var(--past)}
+.v.cur{background:var(--glow);border-color:var(--glow-edge);opacity:1}
+.v.cur + .v{border-top-color:transparent}
+.v.cur .lab b{color:var(--sindoor-ink);opacity:1}
+.v.cur::before{content:"";position:absolute;left:-10px;top:14px;bottom:14px;width:4px;border-radius:4px;background:var(--sindoor)}
+body.hide-hi .hi, body.hide-en .en, body.hide-mean .mean, body.hide-story .story{display:none!important}
+body.admin .v{cursor:pointer}
+body.admin .v:hover:not(.cur){background:color-mix(in srgb,var(--glow) 45%,transparent)}
+body.admin main{padding-bottom:200px}
+
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:center;pointer-events:none;
+  padding:0 max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.dock > *{pointer-events:auto}
+.back{border:0;background:var(--sindoor);color:#fff;border-radius:999px;padding:10px 18px;font-weight:500;cursor:pointer;
+  box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.remote{width:100%;max-width:520px;background:var(--surface);border:1px solid var(--rule);border-radius:16px;padding:10px;
+  box-shadow:0 8px 28px rgba(0,0,0,.14);display:grid;grid-template-columns:1fr 2fr;gap:8px}
+.remote .where{grid-column:1/-1;display:flex;justify-content:space-between;gap:8px;font-size:.82rem;color:var(--muted);padding:0 4px}
+.remote .where strong{color:var(--fg);font-weight:500}
+.rbtn{border:1px solid var(--rule);background:var(--bg);border-radius:12px;padding:14px 8px;font-size:1rem;font-weight:500;cursor:pointer;touch-action:manipulation}
+.rbtn.next{background:var(--sindoor);border-color:var(--sindoor);color:#fff;font-size:1.1rem}
+.rbtn:disabled{opacity:.4;cursor:default}
+.qr{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.qr .code{width:144px;height:144px;background:#fff;padding:6px;border-radius:8px}
+.qr .code img,.qr .code canvas{display:block;width:132px!important;height:132px!important}
+.qr .url{word-break:break-all}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){.v{transition:none}}
+@media (max-width:420px){.v{grid-template-columns:2.7rem 1fr;gap:2px 8px}.hi{font-size:calc(1.18rem*var(--scale))}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-row">
+    <div class="brand"><small id="posline">Sunderkand path</small><span id="poshead">सुन्दरकाण्ड पाठ</span></div>
+    <div class="live" id="live"><span class="dot"></span><span id="livetxt">Connecting</span></div>
+    <button class="iconbtn" id="settingsBtn" aria-expanded="false" aria-controls="settings">Aa</button>
+  </div>
+  <nav class="chips" id="chips" aria-label="Sections"></nav>
+  <section class="panel" id="settings" hidden aria-label="Reading settings">
+    <div class="prow"><span>Show</span>
+      <div class="seg">
+        <button class="tog" id="t-hi" aria-pressed="true">हिंदी</button>
+        <button class="tog" id="t-en" aria-pressed="true">Roman</button>
+        <button class="tog" id="t-story" aria-pressed="true">Story</button>
+        <button class="tog" id="t-mean" aria-pressed="false">Meaning</button>
+      </div></div>
+    <div class="prow"><span>Text size</span>
+      <div class="seg"><button class="tog" id="fs-dn" aria-label="Smaller text">A−</button><button class="tog" id="fs-up" aria-label="Larger text">A+</button></div></div>
+    <div class="prow"><span>Follow the live verse</span>
+      <div class="seg"><button class="tog" id="t-follow" aria-pressed="true">On</button></div></div>
+
+    <div class="prow" id="leadRow"><span class="note">Leading this path?</span>
+      <div class="seg"><button class="tog" id="leadBtn">Lead</button></div></div>
+    <form class="prow" id="pinForm" hidden>
+      <label for="pin">Leader PIN</label>
+      <div class="seg">
+        <input class="pin" id="pin" type="password" inputmode="numeric" autocomplete="current-password" minlength="6" required>
+        <button class="tog primary" type="submit" id="pinGo">Start leading</button>
+        <button class="tog" type="button" id="pinCancel">Cancel</button>
+      </div>
+      <p class="note err" id="pinErr" role="alert" hidden></p>
+    </form>
+
+    <div class="qr" id="qrbox" hidden>
+      <div class="code" id="qrcode" aria-label="QR code for this page"></div>
+      <div><strong>Scan to join</strong><p class="note">Show this to everyone. It opens this page on their phone.</p><p class="note url" id="qrurl"></p></div>
+    </div>
+    <div class="prow" id="resetRow" hidden>
+      <span class="note">You lead this path. Tap any verse or use Next.</span>
+      <div class="confirm" id="resetWrap"></div>
+    </div>
+    <div class="prow" id="stopRow" hidden>
+      <span class="note">Signed in as leader on this device.</span>
+      <div class="seg"><button class="tog" id="stopBtn">Stop leading</button></div>
+    </div>
+    <p class="note" id="connNote" hidden></p>
+  </section>
+</header>
+
+<main id="text" aria-live="off"><p class="loading">Loading the path…</p></main>
+
+<div class="dock" id="dock">
+  <button class="back" id="backBtn" hidden>↓ Back to live verse</button>
+  <div class="remote" id="remote" hidden>
+    <div class="where"><span>Now: <strong id="rnow">—</strong></span><span id="rnext"></span></div>
+    <button class="rbtn" id="prevBtn" aria-label="Previous verse">‹ Back</button>
+    <button class="rbtn next" id="nextBtn" aria-label="Next verse">Next ›</button>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
