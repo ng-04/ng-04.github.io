@@ -38,6 +38,22 @@ Live at **https://ng-04.github.io/sunder_kand_rudrav/**
 Viewers can turn Hindi, Roman, Story and Meaning on or off and change the text size from
 **Aa**. If they scroll away, **↓ Back to live verse** brings them back.
 
+## Finding a verse
+
+Tap the search icon (or press `/` on a laptop) and type a number:
+
+| Type | Finds |
+|---|---|
+| `12.4` | Sunderkand chaupai 12.4 |
+| `12` | Sunderkand doha 12, its chaupais 12.1–12.x, Chalisa chaupai 12, Aarti line 12 |
+| `doha 12`, `d12`, `39क`, `39k` | That Sunderkand doha only |
+| `shlok 2`, `chhand 3.1` | Opening shlok 2, chhand 1 after doha 3 |
+| `chalisa 7`, `aarti 3`, `ramayan aarti 2` | Hanuman Chalisa or Aarti lines |
+| a few words, e.g. `pavan tanay` or `बिद्यावान` | Verses containing them |
+
+Devanagari digits (`१२.४`) work too. Tapping a result scrolls there; it does not move the
+live verse for others. The leader can then tap the verse to move everyone.
+
 ## Resetting to the start
 
 **Aa → Back to start → Yes, start over** moves everyone to the first verse.

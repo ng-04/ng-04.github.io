@@ -79,7 +79,7 @@ function describe(i){
   const u=V[i]; if(!u) return '';
   const t = u.kind==='chaupai' ? 'चौपाई '+u.num
           : u.kind==='doha' ? (u.section==='sunderkand' ? 'दोहा '+u.num : 'दोहा')
-          : u.kind==='shlok' ? u.label : u.kind==='chhand' ? 'छंद' : u.kind==='colophon' ? 'इति' : (u.num ? 'पंक्ति '+u.num : 'टेक');
+          : u.kind==='shlok' ? u.label : u.kind==='chhand' ? 'छंद '+(u.num||'').replace(/\s*छंद\s*/,'.') : u.kind==='colophon' ? 'इति' : (u.num ? 'पंक्ति '+u.num : 'टेक');
   return SEC_SHORT[u.section]+' · '+t;
 }
 
@@ -96,7 +96,7 @@ function applyShow(){
 }));
 $('fs-up').addEventListener('click',()=>{scale=Math.min(1.6,+(scale+.1).toFixed(2));store.set('scale',scale);applyShow();keepCurrentInView();});
 $('fs-dn').addEventListener('click',()=>{scale=Math.max(.8,+(scale-.1).toFixed(2));store.set('scale',scale);applyShow();keepCurrentInView();});
-$('settingsBtn').addEventListener('click',()=>{const p=$('settings');p.hidden=!p.hidden;$('settingsBtn').setAttribute('aria-expanded',String(!p.hidden));});
+$('settingsBtn').addEventListener('click',()=>{const p=$('settings');p.hidden=!p.hidden;$('settingsBtn').setAttribute('aria-expanded',String(!p.hidden));if(!p.hidden){$('finder').hidden=true;$('findBtn').setAttribute('aria-expanded','false');}});
 applyShow();
 
 // ---------- current verse + follow ----------
@@ -146,6 +146,106 @@ addEventListener('scroll',()=>{
   if(cur<0 || isAdmin) return;
   if(follow && !inView(els[cur])) setFollow(false,true);
 },{passive:true});
+
+// ---------- find a verse by number (or by words) ----------
+// Each verse gets a short key: sec (sk/hc/ha/ra), kind (c chaupai, d doha, s shlok, h chhand, a aarti)
+// and its number as typed, e.g. Sunderkand chaupai '12.4', doha '39क', chhand base '3' + sub '1'.
+const SEC_KEY = {'sunderkand':'sk','chalisa':'hc','aarti-hanuman':'ha','aarti-ramayan':'ra'};
+const KIND_KEY = {'chaupai':'c','doha':'d','shlok':'s','chhand':'h','aarti':'a'};
+// Roman spellings vary (pavan tanay / Pavanatanay, sita / seetaa), so text search compares consonants only.
+const skel = t => t.toLowerCase().normalize('NFD').replace(/[^a-z]+/g,'').replace(/w/g,'v').replace(/[aeiouy]+/g,'');
+const DEVA = /[ऀ-ॿ]/;
+const IDX = (()=>{
+  let hcDoha=0;
+  return V.map((u,i)=>{
+    const e={i, sec:SEC_KEY[u.section], kind:KIND_KEY[u.kind]||'', num:null, sub:null,
+             hi:u.hi.join(' '), en:skel(u.en.join(' '))};
+    if(u.kind==='chhand'){ const m=/^(\S+)\s+छंद\s+(\d+)/.exec(u.num||''); if(m){ e.num=m[1]; e.sub=m[2]; } }
+    else if(u.kind==='shlok') e.num=(u.num||'').replace(/\D+/g,'')||null;
+    else if(u.section==='chalisa' && u.kind==='doha') e.num=String(++hcDoha);
+    else e.num=u.num||null;
+    return e;
+  });
+})();
+const WORDS = {
+  kind:{d:['d','do','doha','dohaa','दो','दोहा'], c:['c','ch','chau','chaupai','chaupaai','chaupayi','chopai','chowpai','चौ','चौपाई','चौपाइ'],
+        s:['s','sh','shlok','shloka','slok','sloka','श्लोक'], h:['chhand','chhanda','chand','छंद','छन्द'], a:['aarti','arti','आरती']},
+  sec:{hc:['hc','chalisa','चालीसा'], sk:['sk','sunderkand','sundarkand','sunderkaand','सुन्दरकाण्ड','सुंदरकांड'], ra:['ramayan','ramayana','रामायण']}
+};
+const lookup = (group,w)=>Object.keys(WORDS[group]).find(k=>WORDS[group][k].includes(w));
+
+function findVerses(q){
+  q=q.toLowerCase().replace(/[०-९]/g,d=>'०१२३४५६७८९'.indexOf(d)).trim();
+  if(!q) return [];
+  const m=/(\d+)(?:\s*[.:]\s*(\d+))?\s*(क|ख|kha|ka|kh|k)?(?![a-z])/.exec(q);
+  let N=null;
+  if(m){ N=m[1]+(m[2]?'.'+m[2]:'')+(m[3]?(/^(ख|kh)/.test(m[3])?'ख':'क'):''); q=(q.slice(0,m.index)+' '+q.slice(m.index+m[0].length)); }
+  const words=q.split(/[^a-zऀ-ॿ]+/).filter(Boolean);
+  let kind=null, sec=null, other=[];
+  words.forEach(w=>{ const k=lookup('kind',w), s=lookup('sec',w); if(k) kind=k; else if(s) sec=s; else other.push(w); });
+  if(kind==='a' && sec===null) sec='aarti';
+  const secOk = e => !sec || e.sec===sec || (sec==='aarti' && (e.sec==='ha'||e.sec==='ra'));
+  const kindOk = e => !kind || e.kind===kind;
+  let hits=[];
+  if(N!==null){
+    const dot=N.includes('.'), bare=N.replace(/[कख]$/,'');
+    IDX.forEach(e=>{
+      if(!secOk(e) || !kindOk(e) || e.num===null) return;
+      let score=-1;
+      const plainNum = !dot && N===bare;   // "12", not "12.4" or "39क"
+      if(e.kind==='h') score = dot ? (e.num+'.'+e.sub===N ? 0 : -1) : (plainNum && e.num===N ? 1 : -1);
+      else if(e.num===N) score=0;
+      else if(plainNum && e.kind==='d' && e.num.replace(/[कख]$/,'')===N) score=0;   // "39" finds 39क and 39ख
+      else if(plainNum && e.kind==='c' && e.sec==='sk' && e.num.startsWith(N+'.')) score=1;   // "12" also lists chaupais 12.x
+      if(score>=0) hits.push([score,e]);
+    });
+  } else if(kind || sec){
+    IDX.forEach(e=>{ if(secOk(e) && kindOk(e)) hits.push([0,e]); });
+  } else {
+    const t=skel(other.join(' ')), raw=words.join(' '), hiQ=DEVA.test(raw) && raw.length>=2;
+    if(t.length<3 && !hiQ) return [];
+    IDX.forEach(e=>{ if((t.length>=3 && e.en.includes(t)) || (hiQ && e.hi.includes(raw))) hits.push([0,e]); });
+  }
+  // Exact before "chaupais under this doha", then Sunderkand first, then text order.
+  hits.sort((a,b)=>a[0]-b[0] || (a[1].sec!=='sk')-(b[1].sec!=='sk') || a[1].i-b[1].i);
+  return hits.map(h=>h[1].i);
+}
+
+const MAX_RES=8;
+let foundTimer=0;
+function showFinder(on){
+  $('finder').hidden=!on; $('findBtn').setAttribute('aria-expanded',String(on));
+  if(on){ $('settings').hidden=true; $('settingsBtn').setAttribute('aria-expanded','false'); $('findIn').focus(); $('findIn').select(); }
+}
+function renderResults(){
+  const box=$('findRes'), list=findVerses($('findIn').value);
+  box.replaceChildren();
+  if(!$('findIn').value.trim()) return;
+  if(!list.length){ const p=document.createElement('p'); p.className='note'; p.textContent='No verse matches. Try 12.4, doha 12, shlok 2 or chalisa 7.'; box.append(p); return; }
+  list.slice(0,MAX_RES).forEach(i=>{
+    const b=document.createElement('button'); b.type='button'; b.className='res'; b.setAttribute('role','option');
+    const t=document.createElement('b'); t.textContent=describe(i);
+    const l=document.createElement('span'); l.lang='hi'; l.textContent=V[i].hi[0];
+    b.append(t,l); b.addEventListener('click',()=>jumpTo(i)); box.append(b);
+  });
+  if(list.length>MAX_RES){ const p=document.createElement('p'); p.className='note'; p.textContent=`${list.length-MAX_RES} more. Type the full number, e.g. 12.4.`; box.append(p); }
+}
+function jumpTo(i){
+  showFinder(false);
+  if(!isAdmin) setFollow(false,true);   // a viewer stays here until "Back to live verse"
+  const el=els[i];
+  progScroll=true; progQuietSoon(300);
+  el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
+  document.querySelectorAll('.v.found').forEach(x=>x.classList.remove('found'));
+  el.classList.add('found'); clearTimeout(foundTimer); foundTimer=setTimeout(()=>el.classList.remove('found'),2500);
+}
+$('findBtn').addEventListener('click',()=>showFinder($('finder').hidden));
+$('findIn').addEventListener('input',renderResults);
+$('findForm').addEventListener('submit',e=>{ e.preventDefault(); const r=findVerses($('findIn').value); if(r.length) jumpTo(r[0]); else renderResults(); });
+addEventListener('keydown',e=>{
+  if(e.key==='Escape' && !$('finder').hidden){ showFinder(false); $('findBtn').focus(); }
+  else if(e.key==='/' && !e.target.closest('input,textarea')){ e.preventDefault(); showFinder(true); }
+});
 
 // ---------- keep screen awake ----------
 let lock=null;

@@ -118,6 +118,15 @@ body.admin main{padding-bottom:200px}
 .qr .code img,.qr .code canvas{display:block;width:132px!important;height:132px!important}
 .qr .url{word-break:break-all}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.iconbtn svg{display:block}
+.findrow{display:flex;gap:8px}
+.findin{flex:1;min-width:0;border:1px solid var(--rule);background:var(--bg);border-radius:8px;padding:6px 10px;font-size:1rem}
+.results{display:grid;gap:4px}
+.res{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;text-align:left;border:1px solid var(--rule);background:var(--bg);border-radius:10px;padding:8px 10px;cursor:pointer}
+.res:hover,.res:focus-visible{border-color:var(--sindoor)}
+.res b{font-weight:500;color:var(--sindoor-ink);white-space:nowrap}
+.res span{font-family:var(--f-hi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.v.found{outline:2px solid var(--sindoor);outline-offset:-2px}
 @media (prefers-reduced-motion:reduce){.v{transition:none}}
 @media (max-width:420px){.v{grid-template-columns:2.7rem 1fr;gap:2px 8px}.hi{font-size:calc(1.18rem*var(--scale))}}
 </style>
@@ -127,9 +136,18 @@ body.admin main{padding-bottom:200px}
   <div class="top-row">
     <div class="brand"><small id="posline">Sunderkand path</small><span id="poshead">सुन्दरकाण्ड पाठ</span></div>
     <div class="live" id="live"><span class="dot"></span><span id="livetxt">Connecting</span></div>
+    <button class="iconbtn" id="findBtn" aria-label="Find a verse" aria-expanded="false" aria-controls="finder"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/></svg></button>
     <button class="iconbtn" id="settingsBtn" aria-expanded="false" aria-controls="settings">Aa</button>
   </div>
   <nav class="chips" id="chips" aria-label="Sections"></nav>
+  <section class="panel" id="finder" hidden aria-label="Find a verse">
+    <form id="findForm" class="findrow" role="search">
+      <input class="findin" id="findIn" type="search" autocomplete="off" enterkeyhint="go" placeholder="12.4, doha 12, shlok 2, chalisa 7" aria-describedby="findHelp">
+      <button class="tog primary" type="submit">Go</button>
+    </form>
+    <p class="note" id="findHelp">Sunderkand chaupai like <b>12.4</b>, doha like <b>12</b> or <b>39क</b>, <b>shlok 2</b>, <b>chalisa 7</b>, <b>aarti 3</b>, or a few words of the text.</p>
+    <div class="results" id="findRes" role="listbox" aria-label="Matching verses"></div>
+  </section>
   <section class="panel" id="settings" hidden aria-label="Reading settings">
     <div class="prow"><span>Show</span>
       <div class="seg">
