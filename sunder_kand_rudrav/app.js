@@ -40,8 +40,14 @@ const store = {get(k,d){try{const v=localStorage.getItem('sk.'+k);return v===nul
 const main = $('text');
 const LEADERS = [].concat(ADMIN_EMAIL).map(e=>e.toLowerCase());
 
+// Older TV browsers (Chromium < 86) lack replaceChildren.
+if(!Element.prototype.replaceChildren) Element.prototype.replaceChildren = function(...nodes){ this.textContent=''; this.append(...nodes); };
+
 async function getJSON(url){ const r = await fetch(url); if(!r.ok) throw new Error(url+': '+r.status); return r.json(); }
 
+// Everything below runs inside an async function rather than using top-level await,
+// which older TV browsers (Chromium < 89) reject outright.
+(async () => {
 let V, STORY;
 try{ [V, STORY] = await Promise.all([getJSON('verses.json'), getJSON('story.json')]); }
 catch(e){
@@ -433,3 +439,4 @@ async function startLive(){
   }
 }
 startLive();
+})();

@@ -448,5 +448,13 @@ body.admin main{padding-bottom:200px}
 </div>
 
 <script type="module" src="app.js"></script>
+<script>
+  // If the app script can't run (very old browser), say so instead of loading forever.
+  setTimeout(function(){
+    var p = document.querySelector('#text .loading');
+    if(p && p.textContent.indexOf('Loading') === 0)
+      p.textContent = 'This browser is too old to show the path. Please open the link on a phone or in a newer browser.';
+  }, 12000);
+</script>
 </body>
 </html>
