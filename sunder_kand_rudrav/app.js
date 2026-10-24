@@ -3,6 +3,17 @@
 // Firebase Auth (email + PIN). Without Firebase the page still shows the full text.
 import { FIREBASE_CONFIG, ADMIN_EMAIL, TOTAL } from './config.js';
 
+// Small polyfills for older TV browsers (LG webOS 4-6 run Chromium 53-79).
+// app.legacy.js is this file transpiled for browsers without modules; see README.
+const EP = Element.prototype, DP = DocumentFragment.prototype;
+for(const P of [EP, DP]) if(!P.append) P.append = function(...nodes){
+  nodes.forEach(n => this.appendChild(typeof n === 'string' ? document.createTextNode(n) : n)); };
+for(const P of [EP, DP]) if(!P.replaceChildren) P.replaceChildren = function(...nodes){ this.textContent=''; this.append(...nodes); };
+if(!Object.entries) Object.entries = o => Object.keys(o).map(k => [k, o[k]]);
+if(window.NodeList && !NodeList.prototype.forEach) NodeList.prototype.forEach = Array.prototype.forEach;
+// import() hidden in a string so browsers without dynamic import can still parse this file.
+const importURL = u => new Function('u', 'return import(u)')(u);
+
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const QR_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
 
@@ -39,9 +50,6 @@ const store = {get(k,d){try{const v=localStorage.getItem('sk.'+k);return v===nul
                set(k,v){try{localStorage.setItem('sk.'+k,JSON.stringify(v))}catch(e){}}};
 const main = $('text');
 const LEADERS = [].concat(ADMIN_EMAIL).map(e=>e.toLowerCase());
-
-// Older TV browsers (Chromium < 86) lack replaceChildren.
-if(!Element.prototype.replaceChildren) Element.prototype.replaceChildren = function(...nodes){ this.textContent=''; this.append(...nodes); };
 
 async function getJSON(url){ const r = await fetch(url); if(!r.ok) throw new Error(url+': '+r.status); return r.json(); }
 
@@ -417,7 +425,7 @@ async function startLive(){
   }
   try{
     const [appM, dbM, authM] = await Promise.all([
-      import(FB+'firebase-app.js'), import(FB+'firebase-database.js'), import(FB+'firebase-auth.js')]);
+      importURL(FB+'firebase-app.js'), importURL(FB+'firebase-database.js'), importURL(FB+'firebase-auth.js')]);
     fb = {...dbM, ...authM};
     const app = appM.initializeApp(FIREBASE_CONFIG);
     const db = dbM.getDatabase(app);

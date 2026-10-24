@@ -34,12 +34,12 @@
 [hidden]{display:none!important}
 html{scroll-padding-top:120px;-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-ui);font-size:15px;line-height:1.5;
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  padding-left:16px;padding-right:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
 button,input{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--sindoor);outline-offset:2px}
 
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);
+.top{position:sticky;top:0;margin-left:-16px;margin-right:-16px;padding:10px 16px 8px;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);
   margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px))) calc(-1 * max(16px,env(safe-area-inset-right,0px)));
   padding:10px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));
   border-bottom:1px solid var(--rule)}
@@ -56,7 +56,7 @@ button,input{font:inherit;color:inherit}
 .chip.here{border-color:var(--sindoor);color:var(--sindoor-ink)}
 
 .panel{max-width:720px;margin:10px auto 0;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 14px;display:grid;gap:10px;
-  max-height:calc(100dvh - 140px);overflow-y:auto}
+  max-height:calc(100vh - 140px);max-height:calc(100dvh - 140px);overflow-y:auto}
 .prow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .seg{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .tog{border:1px solid var(--rule);background:var(--bg);border-radius:8px;padding:4px 12px;cursor:pointer;font-size:.88rem}
@@ -67,7 +67,7 @@ button,input{font:inherit;color:inherit}
 .err{color:var(--sindoor-ink)}
 .pin{width:9.5em;border:1px solid var(--rule);background:var(--bg);border-radius:8px;padding:4px 10px;font-size:1rem;letter-spacing:.2em}
 
-main{max-width:720px;margin:0 auto;padding-block:8px 140px}
+main{max-width:720px;margin:0 auto;padding-top:8px;padding-bottom:140px;padding-block:8px 140px}
 .sec{text-align:center;padding:36px 0 14px}
 .sec .om{font-family:var(--f-hi);color:var(--sindoor);font-size:1.6rem;line-height:1}
 .sec h2{font-family:var(--f-hi);font-weight:400;font-size:calc(1.7rem*var(--scale));margin:.2em 0 0;text-wrap:balance}
@@ -82,11 +82,11 @@ main{max-width:720px;margin:0 auto;padding-block:8px 140px}
 .body{min-width:0}
 .hi{font-family:var(--f-hi);font-size:calc(1.28rem*var(--scale));line-height:1.65}
 .en{font-family:var(--f-en);font-size:calc(.98rem*var(--scale));line-height:1.55;color:var(--fg);opacity:.86;margin-top:2px}
-.story{display:none;margin-top:8px;padding:6px 10px;border-radius:8px;background:color-mix(in srgb,var(--sindoor) 9%,transparent);
+.story{display:none;margin-top:8px;padding:6px 10px;border-radius:8px;background:rgba(200,65,15,.09);background:color-mix(in srgb,var(--sindoor) 9%,transparent);
   font-size:calc(.9rem*var(--scale));line-height:1.45;color:var(--fg)}
 .story::before{content:"Story";display:block;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--sindoor-ink);font-weight:700}
 .v.ep .story,.v.cur .story{display:block}
-.v.cur .story{background:color-mix(in srgb,var(--sindoor) 14%,transparent)}
+.v.cur .story{background:rgba(200,65,15,.14);background:color-mix(in srgb,var(--sindoor) 14%,transparent)}
 .mean{font-size:calc(.9rem*var(--scale));color:var(--muted);margin-top:6px;line-height:1.5}
 .v.k-doha .hi,.v.k-shlok .hi,.v.k-chhand .hi{color:var(--sindoor-ink)}
 .v.k-doha .lab b,.v.k-shlok .lab b,.v.k-chhand .lab b{color:var(--sindoor-ink);opacity:1}
@@ -105,7 +105,7 @@ body.admin .v:hover:not(.cur){background:color-mix(in srgb,var(--glow) 45%,trans
 body.admin main{padding-bottom:200px}
 
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:center;pointer-events:none;
-  padding:0 max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+  padding:0 16px 14px;padding:0 max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .dock > *{pointer-events:auto}
 .back{border:0;background:var(--sindoor);color:#fff;border-radius:999px;padding:10px 18px;font-weight:500;cursor:pointer;
   box-shadow:0 6px 20px rgba(0,0,0,.18)}
@@ -131,6 +131,21 @@ body.admin main{padding-bottom:200px}
 .res b{font-weight:500;color:var(--sindoor-ink);white-space:nowrap}
 .res span{font-family:var(--f-hi);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .v.found{outline:2px solid var(--sindoor);outline-offset:-2px}
+/* Older TV browsers (LG webOS 4-6). No CSS grid before Chromium 57. */
+@supports not (display:grid){
+  .panel > * + *{margin-top:10px}
+  .v{display:flex}.lab{flex:none;width:3.4rem;margin-right:10px}.body{flex:1}
+  .remote{display:flex;flex-wrap:wrap}.remote .where{width:100%;margin-bottom:8px}.rbtn{flex:1}.rbtn.next{flex:2;margin-left:8px}
+  .qr{display:flex;align-items:center}.qr .code{flex:none;margin-right:14px}
+  .res{display:flex}.res b{margin-right:10px}.results > * + *{margin-top:4px}
+}
+/* No flex gap before Chromium 84; inset arrived at about the same time. */
+@supports not (inset:0){
+  .top-row > * + *, .live > * + *, .findrow > * + *, .confirm > * + *{margin-left:8px}
+  .chips > * + *{margin-left:6px}
+  .seg > *{margin:3px}
+  .prow > *{margin:4px 0}
+}
 @media (prefers-reduced-motion:reduce){.v{transition:none}}
 @media (max-width:420px){.v{grid-template-columns:2.7rem 1fr;gap:2px 8px}.hi{font-size:calc(1.18rem*var(--scale))}}
 </style>
@@ -448,6 +463,7 @@ body.admin main{padding-bottom:200px}
 </div>
 
 <script type="module" src="app.js"></script>
+<script nomodule src="app.legacy.js"></script>
 <script>
   // If the app script can't run (very old browser), say so instead of loading forever.
   setTimeout(function(){

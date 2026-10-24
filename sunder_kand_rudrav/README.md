@@ -9,7 +9,7 @@ Live at **https://ng-04.github.io/sunder_kand_rudrav/**
 
 ## How it works
 
-- Static files on GitHub Pages; no build step.
+- Static files on GitHub Pages. The only build step is `app.legacy.js` (see below).
 - The shared pointer is one Firebase Realtime Database node, `/live = { idx, at }`.
   Everyone can read it; only the leader's account can write it (`database.rules.json`).
 - The leader PIN is the password of a single Firebase Auth user (`ADMIN_EMAIL` in
@@ -21,6 +21,7 @@ Live at **https://ng-04.github.io/sunder_kand_rudrav/**
 |---|---|
 | `index.html` | Page structure and styles |
 | `app.js` | Rendering, follow mode, reading settings, leader mode, live sync |
+| `app.legacy.js` | `app.js` + `config.js` transpiled for old TV browsers (generated) |
 | `config.js` | Firebase web config, `ADMIN_EMAIL`, `TOTAL` (660) |
 | `verses.json` | All 660 verses in recitation order (Hindi, Roman, meaning) |
 | `story.json` | `[startIndex, text]` story lines |
@@ -87,3 +88,15 @@ From the repo root: `python3 -m http.server 8000`, then open
 http://localhost:8000/sunder_kand_rudrav/. For leading to work from localhost,
 `localhost` must be in Firebase Authentication → Settings → Authorized domains (it is by
 default).
+
+## Old TV browsers
+
+Browsers without JavaScript modules (LG webOS 4 and 5, from 2018 to 2020, run Chromium 53 and 68) load
+`app.legacy.js` instead of `app.js`, through `<script nomodule>`. Newer browsers ignore it.
+**After any change to `app.js` or `config.js`, rebuild it** from this folder:
+
+    npx esbuild@0.24.2 app.js --bundle --format=iife --target=chrome51 --minify --legal-comments=none --outfile=app.legacy.js
+
+Older sets (webOS 3 and earlier, Chromium 38) aren't supported; cast or mirror a phone instead.
+Live sync on old browsers depends on Firebase supporting them; if it can't load, the TV
+still shows the full text and says "Reading only".
