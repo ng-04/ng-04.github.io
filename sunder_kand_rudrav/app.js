@@ -13,6 +13,15 @@ const SECTIONS = {
   'aarti-ramayan':{om:'॥ आरती ॥',title:'श्री रामायण जी की आरती',sub:'Shri Ramayan ji ki Aarti',chip:'Ramayan Aarti'}
 };
 const SEC_SHORT = {'chalisa':'चालीसा','sunderkand':'सुन्दरकाण्ड','aarti-hanuman':'हनुमान आरती','aarti-ramayan':'रामायण आरती'};
+// Story pictures (symbols in index.html), keyed by the story line's start index in story.json.
+const SCENE_AT = {50:'leap', 321:'leap', 78:'lanka', 80:'lanka', 169:'ring', 171:'ring',
+                  298:'fire', 300:'fire', 302:'fire', 304:'fire', 308:'fire', 630:'bridge'};
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function scenePic(name){
+  const svg=document.createElementNS(SVG_NS,'svg'), use=document.createElementNS(SVG_NS,'use');
+  svg.setAttribute('class','pic'); svg.setAttribute('viewBox','0 0 64 64'); svg.setAttribute('aria-hidden','true');
+  use.setAttribute('href','#sc-'+name); svg.appendChild(use); return svg;
+}
 
 const $ = id => document.getElementById(id);
 const store = {get(k,d){try{const v=localStorage.getItem('sk.'+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
@@ -61,7 +70,8 @@ const els = [];
     // A verse's story line is the last entry whose start index is <= the verse index.
     let isStart=false; while(ep+1<STORY.length && STORY[ep+1][0]<=i){ ep++; isStart = STORY[ep][0]===i; }
     if(isStart) a.classList.add('ep');
-    const st=document.createElement('div'); st.className='story'; st.textContent = ep>=0 ? STORY[ep][1] : '';
+    const st=document.createElement('div'); st.className='story';
+    if(ep>=0){ const sc=SCENE_AT[STORY[ep][0]]; if(sc) st.appendChild(scenePic(sc)); st.append(STORY[ep][1]); }
     const m=document.createElement('div'); m.className='mean'; m.textContent=u.mean;
     body.append(hi,en,st,m); a.append(lab,body);
     frag.appendChild(a); els.push(a);
@@ -84,13 +94,13 @@ function describe(i){
 }
 
 // ---------- reading settings (per device) ----------
-let show = Object.assign({hi:true,en:true,story:true,mean:false}, store.get('show',{}));
+let show = Object.assign({hi:true,en:true,story:true,mean:false,pic:true}, store.get('show',{}));
 let scale = store.get('scale',1);
 function applyShow(){
-  ['hi','en','story','mean'].forEach(k=>{ document.body.classList.toggle('hide-'+k,!show[k]); $('t-'+k).setAttribute('aria-pressed',String(!!show[k])); });
+  ['hi','en','story','mean','pic'].forEach(k=>{ document.body.classList.toggle('hide-'+k,!show[k]); $('t-'+k).setAttribute('aria-pressed',String(!!show[k])); });
   document.documentElement.style.setProperty('--scale',scale);
 }
-['hi','en','story','mean'].forEach(k=>$('t-'+k).addEventListener('click',()=>{
+['hi','en','story','mean','pic'].forEach(k=>$('t-'+k).addEventListener('click',()=>{
   show[k]=!show[k]; if(!show.hi&&!show.en){ show[k==='hi'?'en':'hi']=true; }
   store.set('show',show); applyShow(); keepCurrentInView();
 }));

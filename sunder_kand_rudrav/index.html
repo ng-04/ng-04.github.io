@@ -96,7 +96,10 @@ main{max-width:720px;margin:0 auto;padding-block:8px 140px}
 .v.cur + .v{border-top-color:transparent}
 .v.cur .lab b{color:var(--sindoor-ink);opacity:1}
 .v.cur::before{content:"";position:absolute;left:-10px;top:14px;bottom:14px;width:4px;border-radius:4px;background:var(--sindoor)}
-body.hide-hi .hi, body.hide-en .en, body.hide-mean .mean, body.hide-story .story{display:none!important}
+.story::after{content:"";display:block;clear:both}
+.pic{float:right;width:calc(60px*var(--scale));height:calc(60px*var(--scale));margin:0 0 2px 10px;color:var(--sindoor-ink);
+  fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body.hide-hi .hi, body.hide-en .en, body.hide-mean .mean, body.hide-story .story, body.hide-pic .pic{display:none!important}
 body.admin .v{cursor:pointer}
 body.admin .v:hover:not(.cur){background:color-mix(in srgb,var(--glow) 45%,transparent)}
 body.admin main{padding-bottom:200px}
@@ -133,6 +136,50 @@ body.admin main{padding-bottom:200px}
 </style>
 </head>
 <body>
+<!-- Story pictures: simple symbolic line drawings, one per scene, reused by app.js with <use>. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="sc-leap" viewBox="0 0 64 64">
+    <path d="M3 50L13 33L19 41L25 33L33 50" fill="currentColor" fill-opacity=".12"/>
+    <path d="M47 50L54 41L61 50" fill="currentColor" fill-opacity=".12"/>
+    <path d="M2 57q3.5-3 7 0t7 0t7 0t7 0t7 0t7 0t7 0t7 0t7 0"/>
+    <path d="M16 31Q34 0 52 38" stroke-dasharray="1.5 3.5"/>
+    <g transform="rotate(35 36 13)"><circle cx="36" cy="10" r="4.5" fill="currentColor" fill-opacity=".25"/><path d="M36 14.5V24M33.5 24h5"/></g>
+    <path d="M26 14h-5M27 18h-4"/>
+  </symbol>
+  <symbol id="sc-lanka" viewBox="0 0 64 64">
+    <path d="M10 52V30h10v22M44 52V30h10v22M24 52V20h16v32" fill="currentColor" fill-opacity=".12"/>
+    <path d="M10 30Q15 22 20 30M44 30Q49 22 54 30M24 20Q32 8 40 20" fill="currentColor" fill-opacity=".3"/>
+    <path d="M15 24v-3M49 24v-3M32 11V6M29 52v-7a3 3 0 0 1 6 0v7M20 40h4M40 40h4M28 28h0M36 28h0M15 37h0M49 37h0"/>
+    <path d="M4 52h56"/>
+    <path d="M2 58q3.5-3 7 0t7 0t7 0t7 0t7 0t7 0t7 0t7 0t7 0"/>
+  </symbol>
+  <symbol id="sc-ring" viewBox="0 0 64 64">
+    <path d="M6 34a7 7 0 0 1 0-12a9 9 0 0 1 15-8a8 8 0 0 1 13 6a6 6 0 0 1-1 14z" fill="currentColor" fill-opacity=".14"/>
+    <path d="M17 62V34M17 44l7-5M17 40l-6-5M4 62h22"/>
+    <path d="M30 30Q38 34 41 39" stroke-dasharray="1.5 3.5"/>
+    <circle cx="45" cy="48" r="6"/>
+    <path d="M42 41.5l3-3.5l3 3.5l-3 2z" fill="currentColor"/>
+    <path d="M56 40v4M54 42h4M54 54v3M52.5 55.5h3"/>
+  </symbol>
+  <symbol id="sc-fire" viewBox="0 0 64 64">
+    <path d="M4 58V42Q9 36 14 42V58M16 58V34Q24 24 32 34V58M34 58V44H44V58M46 58V38Q52 31 58 38V58" fill="currentColor" fill-opacity=".12"/>
+    <path d="M2 58h60"/>
+    <g fill="currentColor" fill-opacity=".35">
+      <path d="M24 27c-5-1-6-6-3-10c0 2 1 3 2 3c-1-4 1-7 4-9c-1 3 1 5 2 7c1 3 0 8-5 9z"/>
+      <path d="M9 37c-4-1-4-5-2-8c0 1.5 1 2 1.5 2c-.5-3 1-5 3-6c-.5 2 .5 3.5 1 5c.8 2.5-.5 6.5-3.5 7z"/>
+      <path d="M52 31c-4-1-4-5-2-8c0 1.5 1 2 1.5 2c-.5-3 1-5 3-6c-.5 2 .5 3.5 1 5c.8 2.5-.5 6.5-3.5 7z"/>
+      <path d="M39 41c-4-1-4-5-2-8c0 1.5 1 2 1.5 2c-.5-3 1-5 3-6c-.5 2 .5 3.5 1 5c.8 2.5-.5 6.5-3.5 7z"/>
+      <path d="M50 12c-4-1-4-5-2-8c0 1.5 1 2 1.5 2c-.5-3 1-5 3-6c-.5 2 .5 3.5 1 5c.8 2.5-.5 6.5-3.5 7z"/>
+    </g>
+    <path d="M3 22c3-8 11-9 13-3c2 5 9 6 12 0c3-6 10-8 15-5c2 1 4 1 5-1" stroke-width="2.6"/>
+  </symbol>
+  <symbol id="sc-bridge" viewBox="0 0 64 64">
+    <path d="M2 46L9 37L15 46M49 46L55 37L62 46" fill="currentColor" fill-opacity=".14"/>
+    <g fill="currentColor" fill-opacity=".25"><ellipse cx="21" cy="44" rx="3.3" ry="2.6"/><ellipse cx="28.7" cy="44" rx="3.3" ry="2.6"/><ellipse cx="36.3" cy="44" rx="3.3" ry="2.6"/><ellipse cx="44" cy="44" rx="3.3" ry="2.6"/></g>
+    <path d="M2 51q3.5-3 7 0t7 0t7 0t7 0t7 0t7 0t7 0t7 0t7 0M2 59q3.5-3 7 0t7 0t7 0t7 0t7 0t7 0t7 0t7 0t7 0"/>
+    <text x="32" y="30" text-anchor="middle" font-size="12" fill="currentColor" stroke="none" font-family="Tiro Devanagari Hindi, serif">राम</text>
+  </symbol>
+</svg>
 <header class="top">
   <div class="top-row">
     <div class="brand"><small id="posline">Sunderkand path</small><span id="poshead">सुन्दरकाण्ड पाठ</span></div>
@@ -165,6 +212,7 @@ body.admin main{padding-bottom:200px}
         <button class="tog" id="t-en" aria-pressed="true">Roman</button>
         <button class="tog" id="t-story" aria-pressed="true">Story</button>
         <button class="tog" id="t-mean" aria-pressed="false">Meaning</button>
+        <button class="tog" id="t-pic" aria-pressed="true">Pictures</button>
       </div></div>
     <div class="prow"><span>Text size</span>
       <div class="seg"><button class="tog" id="fs-dn" aria-label="Smaller text">A−</button><button class="tog" id="fs-up" aria-label="Larger text">A+</button></div></div>
