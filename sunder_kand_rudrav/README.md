@@ -36,7 +36,10 @@ Live at **https://ng-04.github.io/sunder_kand_rudrav/**
 4. When you're done, **Aa → Stop leading** (or just close the page; the next path starts
    where this one ended until you reset).
 
-Viewers can turn Hindi, Roman, Story and Meaning on or off and change the text size from
+Each Story box has a small line drawing of the scene (35 scenes, drawn as SVG symbols at
+the top of `index.html`; `SCENES` in `app.js` says which story lines use which scene).
+
+Viewers can turn Hindi, Roman, Story, Meaning and Pictures on or off and change the text size from
 **Aa**. If they scroll away, **↓ Back to live verse** brings them back.
 
 ## Finding a verse

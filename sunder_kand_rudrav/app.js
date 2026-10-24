@@ -13,9 +13,20 @@ const SECTIONS = {
   'aarti-ramayan':{om:'॥ आरती ॥',title:'श्री रामायण जी की आरती',sub:'Shri Ramayan ji ki Aarti',chip:'Ramayan Aarti'}
 };
 const SEC_SHORT = {'chalisa':'चालीसा','sunderkand':'सुन्दरकाण्ड','aarti-hanuman':'हनुमान आरती','aarti-ramayan':'रामायण आरती'};
-// Story pictures (symbols in index.html), keyed by the story line's start index in story.json.
-const SCENE_AT = {50:'leap', 321:'leap', 78:'lanka', 80:'lanka', 169:'ring', 171:'ring',
-                  298:'fire', 300:'fire', 302:'fire', 304:'fire', 308:'fire', 630:'bridge'};
+// Story pictures: symbols #sc-<scene> in index.html. Each scene lists the start indices
+// (from story.json) of the story lines it illustrates.
+const SCENES = {
+  prayer:[0,1,38,42,43,639,642,651,655], gada:[2,5,7,36,210,214], fire:[10,298,300,302,304,308,647], herb:[12],
+  lotus:[15,215], crown:[17,522,534], sun:[19], gate:[21,84,87,91,93], refuge:[23,27,474,478,485,487,491,495,502,513,607],
+  jewel:[31,312,314,318,346,348], leap:[46,50,321], mainak:[54], surasa:[56,61,65], shadow:[69,72], lanka:[74,78,80],
+  night:[83,96], tulsi:[100,103,106,110,114,121], ashok:[125,156,158,164,181,183,186,190,193,199],
+  grass:[130,134,138,141,145], dream:[149], ring:[169,171,174,177], bow:[202,205,612,617,635], fruit:[221,225,327,330],
+  fight:[229,234,237], bound:[243,246], court:[248,253,256,263,269,274,283,288,399,402,410,416,420,429,437,441,448,561,570],
+  tail:[291,295], rock:[336,339], tear:[356,358], feet:[362,366,370,377], army:[381,385,389,393,398,578],
+  journey:[455,461,467], ocean:[536,544,588,622], letter:[550,553,595,600], bridge:[630],
+};
+const SCENE_AT = {};
+for(const [name,starts] of Object.entries(SCENES)) starts.forEach(i=>{ SCENE_AT[i]=name; });
 const SVG_NS = 'http://www.w3.org/2000/svg';
 function scenePic(name){
   const svg=document.createElementNS(SVG_NS,'svg'), use=document.createElementNS(SVG_NS,'use');
