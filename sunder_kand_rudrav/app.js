@@ -96,7 +96,13 @@ function applyShow(){
 }));
 $('fs-up').addEventListener('click',()=>{scale=Math.min(1.6,+(scale+.1).toFixed(2));store.set('scale',scale);applyShow();keepCurrentInView();});
 $('fs-dn').addEventListener('click',()=>{scale=Math.max(.8,+(scale-.1).toFixed(2));store.set('scale',scale);applyShow();keepCurrentInView();});
-$('settingsBtn').addEventListener('click',()=>{const p=$('settings');p.hidden=!p.hidden;$('settingsBtn').setAttribute('aria-expanded',String(!p.hidden));if(!p.hidden){$('finder').hidden=true;$('findBtn').setAttribute('aria-expanded','false');}});
+// Top-bar panels: at most one open at a time.
+const PANELS = {share:'shareBtn', finder:'findBtn', settings:'settingsBtn'};
+function openPanel(id){
+  Object.entries(PANELS).forEach(([p,b])=>{ $(p).hidden = p!==id; $(b).setAttribute('aria-expanded',String(p===id)); });
+}
+const togglePanel = id => openPanel($(id).hidden ? id : null);
+$('settingsBtn').addEventListener('click',()=>togglePanel('settings'));
 applyShow();
 
 // ---------- current verse + follow ----------
@@ -214,8 +220,8 @@ function findVerses(q){
 const MAX_RES=8;
 let foundTimer=0;
 function showFinder(on){
-  $('finder').hidden=!on; $('findBtn').setAttribute('aria-expanded',String(on));
-  if(on){ $('settings').hidden=true; $('settingsBtn').setAttribute('aria-expanded','false'); $('findIn').focus(); $('findIn').select(); }
+  openPanel(on ? 'finder' : null);
+  if(on){ $('findIn').focus(); $('findIn').select(); }
 }
 function renderResults(){
   const box=$('findRes'), list=findVerses($('findIn').value);
@@ -246,6 +252,31 @@ addEventListener('keydown',e=>{
   if(e.key==='Escape' && !$('finder').hidden){ showFinder(false); $('findBtn').focus(); }
   else if(e.key==='/' && !e.target.closest('input,textarea')){ e.preventDefault(); showFinder(true); }
 });
+
+// ---------- share: QR code + link ----------
+const PAGE_URL = location.origin + location.pathname;
+let qrDone=false;
+function loadScript(src){ return new Promise((ok,fail)=>{ const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=fail; document.head.appendChild(s); }); }
+async function drawQR(){
+  if(qrDone) return;
+  try{
+    if(!window.QRCode) await loadScript(QR_LIB);
+    new window.QRCode($('qrcode'),{text:PAGE_URL,width:264,height:264,colorDark:'#000000',colorLight:'#ffffff',correctLevel:window.QRCode.CorrectLevel.M});
+    qrDone=true;
+  }catch(e){ $('qrcode').hidden=true; }
+}
+$('qrurl').textContent=PAGE_URL;
+$('shareBtn').addEventListener('click',()=>{ togglePanel('share'); if(!$('share').hidden) drawQR(); });
+$('copyBtn').addEventListener('click',async()=>{
+  const b=$('copyBtn');
+  try{ await navigator.clipboard.writeText(PAGE_URL); b.textContent='Copied'; }
+  catch(e){ getSelection().selectAllChildren($('qrurl')); b.textContent='Link selected'; }
+  setTimeout(()=>{ b.textContent='Copy link'; },2000);
+});
+if(navigator.share){
+  $('nativeShareBtn').hidden=false;
+  $('nativeShareBtn').addEventListener('click',()=>navigator.share({title:document.title,url:PAGE_URL}).catch(()=>{}));
+}
 
 // ---------- keep screen awake ----------
 let lock=null;
@@ -310,26 +341,12 @@ function resetUI(){
   wrap.replaceChildren(b);
 }
 
-let qrDone=false;
-function loadScript(src){ return new Promise((ok,fail)=>{ const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=fail; document.head.appendChild(s); }); }
-async function showQR(){
-  const url=location.origin+location.pathname;
-  $('qrurl').textContent=url; $('qrbox').hidden=false;
-  if(qrDone) return;
-  try{
-    if(!window.QRCode) await loadScript(QR_LIB);
-    new window.QRCode($('qrcode'),{text:url,width:264,height:264,colorDark:'#000000',colorLight:'#ffffff',correctLevel:window.QRCode.CorrectLevel.M});
-    qrDone=true;
-  }catch(e){ $('qrcode').hidden=true; }
-}
-
 function setAdmin(on){
   isAdmin=on;
   document.body.classList.toggle('admin',on);
   $('remote').hidden=!on; $('resetRow').hidden=!on; $('stopRow').hidden=!on;
   $('leadRow').hidden=on; $('pinForm').hidden=true;
-  if(on){ resetUI(); showQR(); setFollow(true,true); keepCurrentInView(); }
-  else $('qrbox').hidden=true;
+  if(on){ resetUI(); setFollow(true,true); keepCurrentInView(); }
   updateBack(); updateStatus();
 }
 
@@ -367,7 +384,9 @@ $('stopBtn').addEventListener('click',()=>{ if(auth) fb.signOut(auth); });
 // ---------- live sync ----------
 async function startLive(){
   if(!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey==='REPLACE_ME' || !FIREBASE_CONFIG.databaseURL){
-    return offline('Live sync isn’t set up yet. You can still read the full text.');
+    // No live sync configured: hide the follow and leader controls until it is.
+    $('followRow').hidden=true; $('leadRow').hidden=true;
+    broken=true; updateStatus(); return;
   }
   try{
     const [appM, dbM, authM] = await Promise.all([

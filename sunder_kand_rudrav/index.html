@@ -116,7 +116,8 @@ body.admin main{padding-bottom:200px}
 .qr{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
 .qr .code{width:144px;height:144px;background:#fff;padding:6px;border-radius:8px}
 .qr .code img,.qr .code canvas{display:block;width:132px!important;height:132px!important}
-.qr .url{word-break:break-all}
+.qr .url{word-break:break-all;margin-bottom:8px}
+@media (max-width:360px){.qr{grid-template-columns:1fr;justify-items:center;text-align:center}.qr .seg{justify-content:center}}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .iconbtn svg{display:block}
 .findrow{display:flex;gap:8px}
@@ -136,6 +137,7 @@ body.admin main{padding-bottom:200px}
   <div class="top-row">
     <div class="brand"><small id="posline">Sunderkand path</small><span id="poshead">सुन्दरकाण्ड पाठ</span></div>
     <div class="live" id="live"><span class="dot"></span><span id="livetxt">Connecting</span></div>
+    <button class="iconbtn" id="shareBtn" aria-label="Share this page" aria-expanded="false" aria-controls="share"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1"/><path d="M14 14h2.5v2.5H14zM18 18h2.5v2.5H18zM14 19h1.5M19 14h1.5"/></svg></button>
     <button class="iconbtn" id="findBtn" aria-label="Find a verse" aria-expanded="false" aria-controls="finder"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20 20"/></svg></button>
     <button class="iconbtn" id="settingsBtn" aria-expanded="false" aria-controls="settings">Aa</button>
   </div>
@@ -148,6 +150,14 @@ body.admin main{padding-bottom:200px}
     <p class="note" id="findHelp">Sunderkand chaupai like <b>12.4</b>, doha like <b>12</b> or <b>39क</b>, <b>shlok 2</b>, <b>chalisa 7</b>, <b>aarti 3</b>, or a few words of the text.</p>
     <div class="results" id="findRes" role="listbox" aria-label="Matching verses"></div>
   </section>
+  <section class="panel" id="share" hidden aria-label="Share this page">
+    <div class="qr">
+      <div class="code" id="qrcode" role="img" aria-label="QR code for this page"></div>
+      <div><strong>Scan to open this page</strong><p class="note">Show this to everyone, or send them the link.</p><p class="note url" id="qrurl"></p>
+        <div class="seg"><button class="tog primary" id="copyBtn">Copy link</button><button class="tog" id="nativeShareBtn" hidden>Share…</button></div>
+      </div>
+    </div>
+  </section>
   <section class="panel" id="settings" hidden aria-label="Reading settings">
     <div class="prow"><span>Show</span>
       <div class="seg">
@@ -158,7 +168,7 @@ body.admin main{padding-bottom:200px}
       </div></div>
     <div class="prow"><span>Text size</span>
       <div class="seg"><button class="tog" id="fs-dn" aria-label="Smaller text">A−</button><button class="tog" id="fs-up" aria-label="Larger text">A+</button></div></div>
-    <div class="prow"><span>Follow the live verse</span>
+    <div class="prow" id="followRow"><span>Follow the live verse</span>
       <div class="seg"><button class="tog" id="t-follow" aria-pressed="true">On</button></div></div>
 
     <div class="prow" id="leadRow"><span class="note">Leading this path?</span>
@@ -173,10 +183,6 @@ body.admin main{padding-bottom:200px}
       <p class="note err" id="pinErr" role="alert" hidden></p>
     </form>
 
-    <div class="qr" id="qrbox" hidden>
-      <div class="code" id="qrcode" aria-label="QR code for this page"></div>
-      <div><strong>Scan to join</strong><p class="note">Show this to everyone. It opens this page on their phone.</p><p class="note url" id="qrurl"></p></div>
-    </div>
     <div class="prow" id="resetRow" hidden>
       <span class="note">You lead this path. Tap any verse or use Next.</span>
       <div class="confirm" id="resetWrap"></div>

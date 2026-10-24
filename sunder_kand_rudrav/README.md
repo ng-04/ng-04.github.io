@@ -29,7 +29,8 @@ Live at **https://ng-04.github.io/sunder_kand_rudrav/**
 ## Running a path
 
 1. Open the link on your phone, tap **Aa → Lead**, enter the PIN.
-2. Show the QR code from the **Aa** panel so everyone can join.
+2. Tap the **QR icon** in the top bar and show the code so everyone can join
+   (it also has **Copy link** and, on phones, **Share…**).
 3. Tap **Next** for each verse, or tap any verse to jump everyone there.
    On a laptop: arrow keys, space, PageUp and PageDown.
 4. When you're done, **Aa → Stop leading** (or just close the page; the next path starts
